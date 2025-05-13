@@ -77,12 +77,11 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Filter by Operating System**
     if operatingSystem != "" {
         query = query.Where("operating_system = ?", operatingSystem)
     }
 
-    // **Filter by Network Bandwidth (Min & Max)**
+
     if minNetworkStr != "" || maxNetworkStr != "" {
         var minNetwork, maxNetwork int
         if minNetworkStr != "" {
@@ -103,7 +102,6 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Filter by Memory (Min & Max)**
     if minMemoryStr != "" || maxMemoryStr != "" {
         var minMemory, maxMemory int
         if minMemoryStr != "" {
@@ -124,7 +122,7 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Filter by Price**
+
     if minPriceStr != "" || maxPriceStr != "" {
         var minPrice, maxPrice float64
         if minPriceStr != "" {
@@ -152,7 +150,6 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Count total results for pagination**
     var totalCount int64
     if err := query.Count(&totalCount).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count SKUs"})
@@ -161,13 +158,13 @@ func GetSKUS(c *gin.Context) {
     totalPages := int64((totalCount + int64(limit) - 1) / int64(limit))
     query = query.Limit(limit).Offset(offset)
 
-    // **Fetch results**
+   
     if err := query.Find(&skus).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch SKUs"})
         return
     }
 
-    // **Response**
+   
     c.JSON(http.StatusOK, gin.H{
         "currentPage": page,
         "totalPages":  totalPages,
