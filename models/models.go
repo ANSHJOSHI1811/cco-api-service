@@ -32,7 +32,7 @@ type SKU struct {
     OperatingSystem string
     InstanceType    string
     Storage         string
-    Network         string   // ✅ Change from string → int
+    Network         string   `gorm:"column:network"`// ✅ Change from string → int
     InstanceSKU     string
     Memory          string
     RegionCode      string

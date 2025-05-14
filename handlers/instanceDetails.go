@@ -7,8 +7,8 @@ import (
 )
 type SKU struct {
 	ID              uint   `gorm:"primaryKey"`
-	RegionID        uint   `gorm:"not null;constraint:OnDelete:CASCADE;"` 
-	ProviderID      uint   `gorm:"not null"`
+	RegionID        uint   `gorm:"not null;constraint:OnDelete:CASCADE;" `
+	ProviderID      uint  ` gorm:"not null"`
 	RegionCode      string `gorm:"not null"`
 	SKUCode         string `gorm:"unique"`
 	InstanceSKU     string
@@ -31,9 +31,9 @@ type SKU struct {
     Prices []Price `gorm:"foreignKey:SKU_ID"`  
 }
 type Price struct {
-    PriceID       uint   `gorm:"primaryKey;autoIncrement"`
+    PriceID       uint  ` gorm:"primaryKey;autoIncrement"`
     SKU_ID        uint   `gorm:"not null;constraint:OnDelete:CASCADE;"`
-	Description   string  `gorm:type:varchar(255)`
+	Description   string  `gorm:"type:varchar(255)"`
     EffectiveDate string `gorm:"type:varchar(255)"`
     Unit          string `gorm:"type:varchar(50)"`
     PricePerUnit  string `gorm:"type:varchar(50)"`
