@@ -5,7 +5,7 @@ import (
     "cco_api/database"
     "cco_api/models"
     "github.com/gin-gonic/gin"
-    "gorm.io/gorm" // ✅ Add this import
+    "gorm.io/gorm"
     "strconv"
 )
 
@@ -22,6 +22,14 @@ func GetSKUS(c *gin.Context) {
     maxNetworkStr := c.DefaultQuery("maxNetwork", "")
     pageStr := c.DefaultQuery("page", "1")
     limitStr := c.DefaultQuery("limit", "200")
+    sortBy := c.Query("sortBy")
+    order := c.DefaultQuery("order", "asc")
+    includeNaPrice := c.DefaultQuery("includeNaPrice", "false")
+
+    // Set default sorting
+    if sortBy == "" {
+        sortBy = "price"
+    }
 
     // Convert pagination params
     page, err := strconv.Atoi(pageStr)
@@ -44,7 +52,7 @@ func GetSKUS(c *gin.Context) {
         }).
         Debug()
 
-    // **Filter by Region**
+    // Filter by Region
     if region != "" {
         var regionRecord models.Region
         if err := database.DB.Where("region_code = ?", region).First(&regionRecord).Error; err != nil {
@@ -54,7 +62,7 @@ func GetSKUS(c *gin.Context) {
         query = query.Where("region_id = ?", regionRecord.RegionID)
     }
 
-    // **Filter by vCPU**
+    // Filter by vCPU
     if minVcpuStr != "" || maxVcpuStr != "" {
         var minVcpu, maxVcpu int
         if minVcpuStr != "" {
@@ -75,12 +83,12 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Filter by Operating System**
+    // Filter by Operating System
     if operatingSystem != "" {
         query = query.Where("operating_system = ?", operatingSystem)
     }
 
-    // **Filter by Network Bandwidth (Min & Max)**
+    // Filter by Network Bandwidth
     if minNetworkStr != "" || maxNetworkStr != "" {
         var minNetwork, maxNetwork int
         if minNetworkStr != "" {
@@ -89,7 +97,7 @@ func GetSKUS(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid minNetwork parameter"})
                 return
             }
-            query = query.Where("network_bandwidth >= ?", minNetwork)
+            query = query.Where("network >= ?", minNetwork)
         }
         if maxNetworkStr != "" {
             maxNetwork, err = strconv.Atoi(maxNetworkStr)
@@ -97,11 +105,11 @@ func GetSKUS(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid maxNetwork parameter"})
                 return
             }
-            query = query.Where("network_bandwidth <= ?", maxNetwork)
+            query = query.Where("network <= ?", maxNetwork)
         }
     }
 
-    // **Filter by Memory (Min & Max)**
+    // Filter by Memory
     if minMemoryStr != "" || maxMemoryStr != "" {
         var minMemory, maxMemory int
         if minMemoryStr != "" {
@@ -122,8 +130,8 @@ func GetSKUS(c *gin.Context) {
         }
     }
 
-    // **Filter by Price**
-    if minPriceStr != "" || maxPriceStr != "" {
+    // Filter by Price
+    if minPriceStr != "" || maxPriceStr != "" || sortBy == "price" {
         var minPrice, maxPrice float64
         if minPriceStr != "" {
             minPrice, err = strconv.ParseFloat(minPriceStr, 64)
@@ -148,9 +156,26 @@ func GetSKUS(c *gin.Context) {
         if maxPriceStr != "" {
             query = query.Where("CAST(prices.price_per_unit AS FLOAT) <= ?", maxPrice)
         }
+    } else if includeNaPrice != "true" {
+        // Exclude SKUs with no prices unless includeNaPrice is true
+        query = query.Joins("JOIN prices ON skus.id = prices.sku_id")
     }
 
-    // **Count total results for pagination**
+    // Apply sorting
+    switch sortBy {
+    case "vcpu":
+        query = query.Order("v_cpu " + order)
+    case "memory":
+        query = query.Order("memory " + order)
+    case "network":
+        query = query.Order("network " + order)
+    case "price":
+        query = query.Order("CAST(prices.price_per_unit AS FLOAT) " + order)
+    default:
+        // Ignore unknown sortBy
+    }
+
+    // Pagination
     var totalCount int64
     if err := query.Count(&totalCount).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count SKUs"})
@@ -159,13 +184,13 @@ func GetSKUS(c *gin.Context) {
     totalPages := int64((totalCount + int64(limit) - 1) / int64(limit))
     query = query.Limit(limit).Offset(offset)
 
-    // **Fetch results**
+    // Final fetch
     if err := query.Find(&skus).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch SKUs"})
         return
     }
 
-    // **Response**
+    // Response
     c.JSON(http.StatusOK, gin.H{
         "currentPage": page,
         "totalPages":  totalPages,
@@ -173,7 +198,3 @@ func GetSKUS(c *gin.Context) {
         "data":        skus,
     })
 }
-
-
-
-
